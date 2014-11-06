@@ -38,6 +38,7 @@ class CSVIterator implements CSVIteratorInterface {
     protected   $filePointer;
     protected   $currentElement;
     protected   $rowCounter         =   0;
+    protected   $rowSize            =   self::DEFAULT_ROW_SIZE;
     protected   $delimiter          =   self::DEFAULT_DELIMITER;
     protected   $enclosure          =   self::DEFAULT_ENCLOSURE;
     protected   $escape             =   self::DEFAULT_ESCAPE;
@@ -50,11 +51,12 @@ class CSVIterator implements CSVIteratorInterface {
      * @param string $enclosure
      * @param string $escape
      */
-    public function __construct($file, $delimiter = self::DEFAULT_DELIMITER, $enclosure = self::DEFAULT_ENCLOSURE, $escape = self::DEFAULT_ESCAPE) {
+    public function __construct($file, $delimiter = self::DEFAULT_DELIMITER, $enclosure = self::DEFAULT_ENCLOSURE, $escape = self::DEFAULT_ESCAPE, $rowSize = self::DEFAULT_ROW_SIZE) {
         $this   ->  setFile($file)
                 ->  setDelimiter($delimiter)
                 ->  setEnclosure($enclosure)
-                ->  setEscape($escape);
+                ->  setEscape($escape)
+                ->  setRowSize($rowSize);
     }
 
     /**
@@ -165,6 +167,22 @@ class CSVIterator implements CSVIteratorInterface {
     }
 
     /**
+     * @return int
+     */
+    public function getRowSize() {
+        return $this->rowSize;
+    }
+
+    /**
+     * @param int $rowSize
+     * @return $this - Provides Fluent Interface
+     */
+    public function setRowSize($rowSize) {
+        $this->rowSize = (int) $rowSize;
+        return $this;
+    }
+
+    /**
      * @return boolean
      */
     public function isOpened() {
@@ -200,7 +218,7 @@ class CSVIterator implements CSVIteratorInterface {
     public function current() {
         if (!$this->isOpened())
             $this->rewind();
-        $this->currentElement = fgetcsv($this->filePointer, static::DEFAULT_ROW_SIZE, $this->delimiter, $this->enclosure, $this->escape);
+        $this->currentElement = fgetcsv($this->filePointer, $this->getRowSize(), $this->delimiter, $this->enclosure, $this->escape);
         $this->rowCounter++;
         return $this->currentElement;
     }
@@ -241,7 +259,7 @@ class CSVIterator implements CSVIteratorInterface {
     public function count() {
         if (!$this->nbRows) {
             while (!feof($this->filePointer)) {
-                $line = fgets($this->filePointer, static::DEFAULT_ROW_SIZE);
+                $line = fgets($this->filePointer, $this->getRowSize());
                 $this->nbRows = $this->nbRows + substr_count($line, PHP_EOL);
             }
             rewind($this->filePointer);
