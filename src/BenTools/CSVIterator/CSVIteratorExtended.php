@@ -121,7 +121,7 @@ class CSVIteratorExtended extends \FilterIterator {
      * @return bool
      */
     public function accept() {
-        return (!$this->keysAreSet || $this->getCSVIterator()->getRowCounter()) !== 1 && $this->current();
+        return (!$this->keysAreSet || $this->getCSVIterator()->getRowCounter() !== 1) && $this->current();
     }
 
 }
