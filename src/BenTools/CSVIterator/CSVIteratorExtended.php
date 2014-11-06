@@ -25,7 +25,7 @@
  * @author Beno!t POLASZEK - 2014
  */
 
-namespace BenTools;
+namespace BenTools\CSVIterator;
 
 class CSVIteratorExtended extends \FilterIterator {
 
