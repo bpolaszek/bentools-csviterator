@@ -1,0 +1,26 @@
+{
+  "name": "bentools/csviterator",
+  "type": "library",
+  "description": "An easy way to iterate over a CSV file",
+  "keywords": ["csv", "iterator", "csviterator"],
+  "homepage": "https://github.com/bpolaszek/bentools-csviterator",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Beno!t POLASZEK",
+      "role": "Developer"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/bpolaszek/bentools-csviterator"
+    }
+  ],
+  "require": {
+    "php": ">=5"
+  },
+  "autoload": {
+    "psr-4": {"BenTools\\": "src/BenTools"}
+  }
+}
