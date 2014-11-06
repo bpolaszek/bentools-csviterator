@@ -58,7 +58,7 @@ class CSVIteratorExtended extends \FilterIterator {
             return $row;
 
         if (!is_array($row))
-            return array_combine($this->keys, array_fill(0, count($this->keys), ''));
+            return false;
 
         if (count($this->keys) === count($row))
             return array_combine($this->keys, $row);
@@ -80,7 +80,6 @@ class CSVIteratorExtended extends \FilterIterator {
      */
     public function setFirstRowAsKeys($callable = null) {
         $this->setKeys(((bool) $this->getCSVIterator()->getRowCounter()) ? $this->getCSVIterator()->rewind()->current() : $this->getCSVIterator()->current(), $callable);
-        $this->keysAreSet   =   true;
         return $this;
     }
 
@@ -91,6 +90,7 @@ class CSVIteratorExtended extends \FilterIterator {
      */
     public function setKeys(Array $keys, $callable = null) {
         $this->keys = (is_callable($callable)) ? array_map($callable, $keys) : $keys;
+        $this->keysAreSet   =   true;
         return $this;
     }
 
@@ -117,9 +117,11 @@ class CSVIteratorExtended extends \FilterIterator {
         return $this;
     }
 
+    /**
+     * @return bool
+     */
     public function accept() {
-        return !$this->keysAreSet || $this->getCSVIterator()->getRowCounter() !== 1;
+        return (!$this->keysAreSet || $this->getCSVIterator()->getRowCounter()) !== 1 && $this->current();
     }
-
 
 }
