@@ -27,11 +27,7 @@
 
 namespace BenTools\CSVIterator;
 
-interface CSVIteratorInterface extends \Iterator, \Countable {
+interface CSVIteratorInterface extends  \Iterator, \SeekableIterator, \Countable {
 
-    /**
-     * @return int
-     */
-    public function getRowCounter();
 
 }

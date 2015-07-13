@@ -27,38 +27,72 @@
 
 namespace BenTools\CSVIterator;
 
-class CSVIteratorExtended extends \FilterIterator {
+class CSVIteratorExtended extends \FilterIterator implements CSVIteratorInterface {
 
-    protected   $keys       =   array();
-    protected   $keysAreSet =   false;
+    protected $keys = array();
 
-    /**
-     * @var CSVIteratorInterface
-     */
-    protected   $CSVIterator;
+    protected $firstRowsAsKeys = false;
 
     /**
-     * @param CSVIteratorInterface $CSVIterator
-     * @param null                 $callable - A callable to apply on keys
+     * @var callable
      */
-    public function __construct(CSVIteratorInterface $CSVIterator, $callable = null) {
-        $this->setCSVIterator($CSVIterator);
+    protected $formatKeys;
+
+    /**
+     * @var callable
+     */
+    protected $rowFilter;
+
+    protected $nbRows;
+
+    /**
+     * @param CSVIterator $CSVIterator
+     * @param callable|null $formatKeys  - A callable to apply on keys
+     * @param bool|true $setFirstRowASKeys - Consider the 1st row as keys
+     * @param callable|null $rowFilter - A callable to filter rows
+     */
+    public function __construct(CSVIterator $CSVIterator, callable $formatKeys = null, $setFirstRowASKeys = true, callable $rowFilter = null)
+    {
         parent::__construct($CSVIterator);
-        $this->setFirstRowAsKeys($callable);
+        $this->formatKeys       =   $formatKeys;
+        $this->firstRowAsKeys   =   $setFirstRowASKeys;
+        $this->rowFilter        =   $rowFilter;
+        $this->rewind();
     }
 
     /**
-     * @return array|bool|mixed
+     * @inheritDoc
      */
-    public function current() {
-
+    public function current()
+    {
         $row = parent::current();
+
+        if ($this->firstRowAsKeys && !$this->keys && $this->key() === 0) {
+            $this->keys = is_callable($this->formatKeys) ? array_map($this->formatKeys, $row) : $row;
+        }
+
+        return $this->formatRow($row);
+    }
+
+    /**
+     * @param $row
+     * @return array|bool
+     */
+    protected function formatRow($row)
+    {
+
+        if ($this->firstRowAsKeys && $this->key() === 0) {
+            return false;
+        }
+
+        if (!array_filter($row, $this->getRowFilter()))
+            return false;
 
         if (!$this->keys)
             return $row;
 
         if (!is_array($row))
-            return false;
+            return [];
 
         if (count($this->keys) === count($row))
             return array_combine($this->keys, $row);
@@ -70,58 +104,115 @@ class CSVIteratorExtended extends \FilterIterator {
             return array_combine($this->keys, (array) array_slice($row, 0, count($this->keys)));
 
         else
-            return false;
+            return [];
+    }
 
+
+    /**
+     * @inheritDoc
+     */
+    public function seek($position)
+    {
+        $this->getInnerIterator()->seek($position);
     }
 
     /**
-     * @param null $callable
-     * @return $this
+     * @inheritDoc
      */
-    public function setFirstRowAsKeys($callable = null) {
-        $this->setKeys(((bool) $this->getCSVIterator()->getRowCounter()) ? $this->getCSVIterator()->rewind()->current() : $this->getCSVIterator()->current(), $callable);
-        return $this;
-    }
-
-    /**
-     * @param array $keys
-     * @param null  $callable
-     * @return $this
-     */
-    public function setKeys(Array $keys, $callable = null) {
-        $this->keys = (is_callable($callable)) ? array_map($callable, $keys) : $keys;
-        $this->keysAreSet   =   true;
-        return $this;
+    public function accept()
+    {
+        return (bool) $this->current();
     }
 
     /**
      * @return array
      */
-    public function getKeys() {
+    public function getKeys()
+    {
         return $this->keys;
     }
 
     /**
-     * @return CSVIteratorInterface
-     */
-    public function getCSVIterator() {
-        return $this->CSVIterator;
-    }
-
-    /**
-     * @param CSVIteratorInterface $CSVIterator
+     * @param array $keys
      * @return $this - Provides Fluent Interface
      */
-    public function setCSVIterator(CSVIteratorInterface $CSVIterator) {
-        $this->CSVIterator = $CSVIterator;
+    public function setKeys($keys)
+    {
+        $this->keys = $keys;
         return $this;
     }
 
     /**
-     * @return bool
+     * @return callable
      */
-    public function accept() {
-        return (!$this->keysAreSet || $this->getCSVIterator()->getRowCounter() !== 1) && $this->current();
+    public function getRowFilter()
+    {
+        if (is_null($this->rowFilter))
+            $this->rowFilter = function($cell) {
+                return trim($cell) !== '';
+            };
+        return $this->rowFilter;
+    }
+
+    /**
+     * @param callable $rowFilter
+     * @return $this - Provides Fluent Interface
+     */
+    public function setRowFilter($rowFilter)
+    {
+        $this->rowFilter = $rowFilter;
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function count()
+    {
+        if (is_null($this->nbRows)) {
+            $currentKey = $this->key();
+            $this->rewind();
+            $this->nbRows = 0;
+            foreach ($this AS $row)
+                $this->nbRows++;
+            $this->seek($currentKey);
+        }
+        return $this->nbRows;
+    }
+
+    /**
+     * @return boolean
+     */
+    public function getFirstRowsAsKeys()
+    {
+        return $this->firstRowsAsKeys;
+    }
+
+    /**
+     * @param boolean $firstRowsAsKeys
+     * @return $this - Provides Fluent Interface
+     */
+    public function setFirstRowsAsKeys($firstRowsAsKeys)
+    {
+        $this->firstRowsAsKeys = $firstRowsAsKeys;
+        return $this;
+    }
+
+    /**
+     * @return CSVIteratorInterface
+     * @deprecated - to be removed
+     */
+    public function getCSVIterator() {
+        return $this->getInnerIterator();
+    }
+    /**
+     * @param CSVIteratorInterface $CSVIterator
+     * @return $this - Provides Fluent Interface
+     * @deprecated - to be removed
+     */
+    public function setCSVIterator(CSVIteratorInterface $CSVIterator) {
+        parent::__construct($CSVIterator);
+        return $this;
     }
 
 }

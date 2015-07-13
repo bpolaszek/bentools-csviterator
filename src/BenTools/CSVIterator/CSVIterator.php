@@ -29,34 +29,30 @@ namespace BenTools\CSVIterator;
 
 class CSVIterator implements CSVIteratorInterface {
 
-    const       DEFAULT_ROW_SIZE    =   4096;
     const       DEFAULT_DELIMITER   =   ',';
     const       DEFAULT_ENCLOSURE   =   '"';
     const       DEFAULT_ESCAPE      =   '\\';
 
-    protected   $file               =   '';
-    protected   $filePointer;
-    protected   $currentElement;
-    protected   $rowCounter         =   0;
-    protected   $rowSize            =   self::DEFAULT_ROW_SIZE;
+    protected   $file;
+    protected   $nbRows;
     protected   $delimiter          =   self::DEFAULT_DELIMITER;
     protected   $enclosure          =   self::DEFAULT_ENCLOSURE;
     protected   $escape             =   self::DEFAULT_ESCAPE;
-    protected   $nbRows             =   0;
-    private     $opened             =   false;
 
     /**
-     * @param string $file - the file name to open
+     * @param \SplFileObject|string $file - a filename or a SplFileObject
      * @param string $delimiter
      * @param string $enclosure
      * @param string $escape
      */
-    public function __construct($file, $delimiter = self::DEFAULT_DELIMITER, $enclosure = self::DEFAULT_ENCLOSURE, $escape = self::DEFAULT_ESCAPE, $rowSize = self::DEFAULT_ROW_SIZE) {
-        $this   ->  setFile($file)
-                ->  setDelimiter($delimiter)
-                ->  setEnclosure($enclosure)
-                ->  setEscape($escape)
-                ->  setRowSize($rowSize);
+    public function __construct($file, $delimiter = self::DEFAULT_DELIMITER, $enclosure = self::DEFAULT_ENCLOSURE, $escape = self::DEFAULT_ESCAPE) {
+        if (is_string($file))
+            $file = new \SplFileObject($file, 'r');
+        $this->delimiter = $delimiter;
+        $this->enclosure = $enclosure;
+        $this->escape = $escape;
+        $file->setCsvControl($delimiter, $enclosure, $escape);
+        $this->file = $file;
     }
 
     /**
@@ -69,91 +65,69 @@ class CSVIterator implements CSVIteratorInterface {
     }
 
     /**
-     * Opens the CSV file.
-     * @return $this
+     * @inheritDoc
      */
-    protected function open() {
-        $this->filePointer = fopen($this->file, 'r');
-        $this->count();
-        $this->setOpened(true);
-        return $this;
+    public function current() {
+        return $this->file->fgetcsv();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function next() {
+        $this->file->next();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function key() {
+        return $this->file->key();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function valid() {
+        return $this->file->valid();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function rewind() {
+        $this->file->rewind();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function seek($position)
+    {
+        $this->file->seek($position);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function count()
+    {
+        if (is_null($this->nbRows)) {
+            $currentKey = $this->key();
+            $this->rewind();
+            $this->nbRows = 0;
+            foreach ($this AS $row)
+                $this->nbRows++;
+            $this->seek($currentKey);
+        }
+        return $this->nbRows;
     }
 
     /**
      * @return int
      */
-    public function getRowCounter() {
-        return $this->rowCounter;
-    }
-
-    /**
-     * @return string
-     */
-    public function getFile() {
-        return $this->file;
-    }
-
-    /**
-     * @param string $file
-     * @return $this - Provides Fluent Interface
-     */
-    public function setFile($file) {
-        $this->file = $file;
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getDelimiter() {
-        return $this->delimiter;
-    }
-
-    /**
-     * @param string $delimiter
-     * @return $this - Provides Fluent Interface
-     */
-    public function setDelimiter($delimiter) {
-        $this->delimiter = $delimiter;
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getEnclosure() {
-        return $this->enclosure;
-    }
-
-    /**
-     * @param string $enclosure
-     * @return $this - Provides Fluent Interface
-     */
-    public function setEnclosure($enclosure) {
-        $this->enclosure = $enclosure;
-        return $this;
-    }
-
-    /**
-     * @return string
-     */
-    public function getEscape() {
-        return $this->escape;
-    }
-
-    /**
-     * @param string $escape
-     * @return $this - Provides Fluent Interface
-     */
-    public function setEscape($escape) {
-        $this->escape = $escape;
-        return $this;
-    }
-
-    /**
-     * @return int
-     */
-    public function getNbRows() {
+    public function getNbRows()
+    {
         return $this->nbRows;
     }
 
@@ -161,110 +135,110 @@ class CSVIterator implements CSVIteratorInterface {
      * @param int $nbRows
      * @return $this - Provides Fluent Interface
      */
-    public function setNbRows($nbRows) {
-        $this->nbRows = $nbRows;
+    public function setNbRows($nbRows)
+    {
+        $this->nbRows = (int) $nbRows;
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getDelimiter()
+    {
+        return $this->delimiter;
+    }
+
+    /**
+     * @param string $delimiter
+     * @return $this - Provides Fluent Interface
+     */
+    public function setDelimiter($delimiter)
+    {
+        $this->delimiter = $delimiter;
+        $this->file->setCsvControl($delimiter, $this->getEnclosure(), $this->getEscape());
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getEnclosure()
+    {
+        return $this->enclosure;
+    }
+
+    /**
+     * @param string $enclosure
+     * @return $this - Provides Fluent Interface
+     */
+    public function setEnclosure($enclosure)
+    {
+        $this->enclosure = $enclosure;
+        $this->file->setCsvControl($this->getDelimiter(), $enclosure, $this->getEscape());
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function getEscape()
+    {
+        return $this->escape;
+    }
+
+    /**
+     * @param string $escape
+     * @return $this - Provides Fluent Interface
+     */
+    public function setEscape($escape)
+    {
+        $this->escape = $escape;
+        $this->file->setCsvControl($this->getDelimiter(), $this->getEnclosure(), $escape);
         return $this;
     }
 
     /**
      * @return int
+     * @deprecated - to be removed
      */
     public function getRowSize() {
-        return $this->rowSize;
+        return 4096;
     }
-
     /**
      * @param int $rowSize
      * @return $this - Provides Fluent Interface
+     * @deprecated - to be removed
      */
     public function setRowSize($rowSize) {
-        $this->rowSize = (int) $rowSize;
         return $this;
     }
 
     /**
      * @return boolean
+     * @deprecated - to be removed
      */
     public function isOpened() {
-        return $this->opened;
+        return true;
     }
 
     /**
-     * @param boolean $opened
+     * @return \SplFileObject
+     */
+    public function getFile()
+    {
+        return $this->file;
+    }
+
+    /**
+     * @param \SplFileObject $file
      * @return $this - Provides Fluent Interface
      */
-    private function setOpened($opened) {
-        $this->opened = (bool) $opened;
+    public function setFile($file)
+    {
+        $this->file = $file;
         return $this;
     }
 
-    /**
-     * @return $this
-     */
-    public function rewind() {
-        if (!$this->isOpened())
-            $this->open();
-        $this->rowCounter = 0;
-        if (!@rewind($this->filePointer)) {
-            $this->close();
-            $this->open();
-        }
-        return $this;
-    }
-
-    /**
-     * @return array
-     */
-    public function current() {
-        if (!$this->isOpened())
-            $this->rewind();
-        $this->currentElement = fgetcsv($this->filePointer, $this->getRowSize(), $this->delimiter, $this->enclosure, $this->escape);
-        $this->rowCounter++;
-        return $this->currentElement;
-    }
-
-    /**
-     * @return int
-     */
-    public function key() {
-        return $this->rowCounter;
-    }
-
-    /**
-     * @return bool
-     */
-    public function next() {
-        return !feof($this->filePointer);
-    }
-
-    /**
-     * @return bool
-     */
-    protected function close() {
-        @fclose($this->filePointer);
-        $this->setOpened(false);
-        return false;
-    }
-
-    /**
-     * @return bool
-     */
-    public function valid() {
-        return (!$this->next()) ? $this->close() : true;
-    }
-
-    /**
-     * @return int
-     */
-    public function count() {
-        if (!$this->nbRows) {
-            while (!feof($this->filePointer)) {
-                $line = fgets($this->filePointer, $this->getRowSize());
-                $this->nbRows = $this->nbRows + substr_count($line, PHP_EOL);
-            }
-            rewind($this->filePointer);
-        }
-        return $this->nbRows;
-    }
 
 }
