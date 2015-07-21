@@ -85,7 +85,7 @@ class CSVIteratorExtended extends \FilterIterator implements CSVIteratorInterfac
             return false;
         }
 
-        if (!array_filter($row, $this->getRowFilter()))
+        if (is_array($row) && !array_filter($row, $this->getRowFilter()))
             return false;
 
         if (!$this->keys)
